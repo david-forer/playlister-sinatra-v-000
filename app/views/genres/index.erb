@@ -1,3 +1,9 @@
-<% @genres.each do |genre| %>
- <li><a href="/genres/<%= genre.slug %>"> <%= genre.name %></a></li>
-<% end %>
+this si the index.erb
+
+<h1>All Genres</h1>
+
+<ul>
+  <% @genres.each do |genre| %>
+  <li><%= genre.name %>, <a href='/genres/<%= genre.slug %>'>Link</a></li>
+  <% end %>
+</ul>

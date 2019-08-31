@@ -1,42 +1,71 @@
+require 'sinatra/base'
+require 'rack-flash'
+
 class SongsController < ApplicationController
+  enable :sessions
+  use Rack::Flash
 
- get '/songs' do
-   @songs = Song.all
-   erb :'/songs/index'
- end
+  get '/songs' do
+    @songs = Song.all
+    erb :'/songs/index'
+  end
 
- get '/songs/new' do
-   erb :'/songs/new'
- end
+  get '/songs/new' do
+    @artists = Artist.all
+    @genres = Genre.all
 
- get '/songs/:slug' do
-   @song = Song.find_by_slug(params[:slug])
-   erb :'songs/show'
- end
+    erb :'/songs/new'
+  end
 
- post '/songs' do
-   @song = Song.create(:name => params["Name"])
-   @song.artist = Artist.find_or_create_by(:name => params["Artist Name"])
-   @song.genre_ids = params[:genres]
-   @song.save
+  get '/songs/:slug' do
+    @song = Song.find_by_slug(params[:slug])
 
-   erb :'songs/show', locals: {message: "Successfully created song."}
- end
+    erb :'/songs/show'
+  end
 
- get '/songs/:slug/edit' do
-   @song = Song.find_by_slug(params[:slug])
+  get '/songs/:slug/edit' do
+    @song = Song.find_by_slug(params[:slug])
+    @genres = Genre.all
 
-   erb :'songs/edit'
- end
+    erb :'/songs/edit'
+  end
 
- patch '/songs/:slug' do
-   @song = Song.find_by_slug(params[:slug])
-   
-   @song.update(params[:song])
+  post '/songs' do
+    @song = Song.create(params["song"])
+    artist = Artist.all.find do |artist|
+      artist.slug == params[:artist][:name].downcase.gsub(' ','-')
+    end
+    if artist
+      artist.songs << @song
+    else
+      @artist = Artist.create(name: params[:artist][:name])
+      @artist.songs << @song
+    end
 
-   @song.artist = Artist.find_or_create_by(name: params[:artist][:name])
-   @song.save
+    params[:genres].each do |genre|
+      @song.genres << Genre.find(genre)
+    end
+    flash[:message] = "Successfully created song."
+    redirect to "/songs/#{@song.slug}"
+  end
 
-   erb :'songs/show', locals: {message: "Song successfully updated."}
- end
+  patch '/songs' do
+
+    @song = Song.find_by(params[:name])
+    @song.update(params[:song])
+    if !Artist.find_by(name: params[:artist][:name])
+      @artist = Artist.create(name: params[:artist][:name])
+      @artist.songs << @song
+    else
+      Artist.find_by(name: params[:artist][:name]).songs << @song
+    end
+
+    @song.genres.clear
+    params[:genres].each do |genre|
+      @song.genres << Genre.find(genre)
+    end
+
+    flash[:message] = "Successfully updated song."
+    redirect to "/songs/#{@song.slug}"
+  end
 end
